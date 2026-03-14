@@ -192,7 +192,9 @@ pub(crate) fn layer_surface<'a>(
             cosmic::iced::widget::container::Style {
                 background: if in_select_all {
                     // Match TextInput::Search background since no text_input is present
-                    Some(iced::Background::Color(theme.current_container().small_widget.into()))
+                    Some(iced::Background::Color(
+                        theme.current_container().small_widget.into(),
+                    ))
                 } else {
                     // text_input draws its own background; don't double up
                     None
@@ -207,121 +209,101 @@ pub(crate) fn layer_surface<'a>(
         }))
         .into();
 
-let launcher_results: cosmic::Element<Msg> = if !app.launcher_items.is_empty() {
-    let items: Vec<_> = app
-        .launcher_items
-        .iter()
-        .take(5)
-        .enumerate()
-        .map(|(i, item)| {
-            let name = cosmic::widget::text::body(&item.name)
-                .align_x(cosmic::iced::alignment::Horizontal::Left);
-            let desc = cosmic::widget::text::caption(&item.description)
-                .align_x(cosmic::iced::alignment::Horizontal::Left);
-            
-            let mut button_content = Vec::new();
-            
-            // Add icon if available
-            if let Some(Some(icon_handle)) = app.launcher_item_icon_handles.get(i) {
+    let launcher_results: cosmic::Element<Msg> = if !app.launcher_items.is_empty() {
+        let items: Vec<_> = app
+            .launcher_items
+            .iter()
+            .take(5)
+            .enumerate()
+            .map(|(i, item)| {
+                let name = cosmic::widget::text::body(&item.name)
+                    .align_x(cosmic::iced::alignment::Horizontal::Left);
+                let desc = cosmic::widget::text::caption(&item.description)
+                    .align_x(cosmic::iced::alignment::Horizontal::Left);
+
+                let mut button_content = Vec::new();
+
+                // Add icon if available
+                if let Some(Some(icon_handle)) = app.launcher_item_icon_handles.get(i) {
+                    button_content.push(
+                        cosmic::widget::icon(icon_handle.clone())
+                            .width(Length::Fixed(32.0))
+                            .height(Length::Fixed(32.0))
+                            .into(),
+                    );
+                }
+
+                // Add name and description column
                 button_content.push(
-                    cosmic::widget::icon(icon_handle.clone())
-                        .width(Length::Fixed(32.0))
-                        .height(Length::Fixed(32.0))
+                    cosmic::widget::column::with_children(vec![name.into(), desc.into()])
+                        .width(Length::Fill)
                         .into(),
                 );
-            }
-            
-            // Add name and description column
-            button_content.push(
-                cosmic::widget::column::with_children(vec![name.into(), desc.into()])
-                    .width(Length::Fill)
-                    .into()
-            );
-            
-            let button = cosmic::widget::button::custom(
-                cosmic::widget::row::with_children(button_content)
-                    .spacing(12)
-                    .align_y(cosmic::iced::Alignment::Center)
-            )
-            .on_press(Msg::Activate(Some(i)))
-            .width(Length::Fill)
-            .padding(12);
-            
-            if i == app.focused {
-                button.class(cosmic::theme::Button::Suggested).into()
-            } else {
-                button.into()
-            }
-        })
-        .collect();
-    cosmic::widget::container(
-        cosmic::widget::column::with_children(items).spacing(1),
-    )
-    .class(cosmic::theme::Container::custom(|theme| {
-        cosmic::iced::widget::container::Style {
-            background: Some(
-                cosmic::iced::Background::Color(
-                    theme.current_container().base.into(),
+
+                let button = cosmic::widget::button::custom(
+                    cosmic::widget::row::with_children(button_content)
+                        .spacing(12)
+                        .align_y(cosmic::iced::Alignment::Center),
                 )
-            ),
-            border: Border {
-                radius: 8.0.into(),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }))
-    .padding(4)
+                .on_press(Msg::Activate(Some(i)))
+                .width(Length::Fill)
+                .padding(12);
+
+                if i == app.focused {
+                    button.class(cosmic::theme::Button::Suggested).into()
+                } else {
+                    button.into()
+                }
+            })
+            .collect();
+        cosmic::widget::container(cosmic::widget::column::with_children(items).spacing(1))
+            .class(cosmic::theme::Container::custom(|theme| {
+                cosmic::iced::widget::container::Style {
+                    background: Some(cosmic::iced::Background::Color(
+                        theme.current_container().base.into(),
+                    )),
+                    border: Border {
+                        radius: 8.0.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
+            }))
+            .padding(4)
+            .width(Length::Fill)
+            .into()
+    } else {
+        cosmic::Element::from(cosmic::widget::Space::new(Length::Shrink, Length::Shrink))
+    };
+    let search_section = cosmic::widget::container(
+        column![search_bar, launcher_results]
+            .spacing(8)
+            .width(Length::Fill)
+            .max_width(600.0),
+    )
     .width(Length::Fill)
-    .into()
-} else {
-    cosmic::Element::from(cosmic::widget::Space::new(
-        Length::Shrink,
-        Length::Shrink,
-    ))
-};
-let search_section = cosmic::widget::container(
-    column![search_bar, launcher_results]
-        .spacing(8)
-        .width(Length::Fill)
-        .max_width(600.0),
-)
-.width(Length::Fill)
-.align_x(cosmic::iced::alignment::Horizontal::Center);
+    .align_x(cosmic::iced::alignment::Horizontal::Center);
 
-let container = match layout {
-    WorkspaceLayout::Vertical => {
-        widget::layer_container(
-            row![
-                sidebar,
-                search_section,
-                toplevels
-            ]
-            .spacing(12)
-            .height(Length::Fill)
-            .width(Length::Fill)
-        )
-    }
+    let container = match layout {
+        WorkspaceLayout::Vertical => widget::layer_container(
+            row![sidebar, search_section, toplevels]
+                .spacing(12)
+                .height(Length::Fill)
+                .width(Length::Fill),
+        ),
 
-    WorkspaceLayout::Horizontal => {
-        widget::layer_container(
-            column![
-                sidebar,
-                search_section,
-                toplevels
-            ]
-            .spacing(12)
-            .height(Length::Fill)
-            .width(Length::Fill)
-        )
-    }
-};
+        WorkspaceLayout::Horizontal => widget::layer_container(
+            column![sidebar, search_section, toplevels]
+                .spacing(12)
+                .height(Length::Fill)
+                .width(Length::Fill),
+        ),
+    };
 
-let panel_regions = app.panel_regions(&surface.output);
-let container = widget::container(container).padding(panel_regions);
+    let panel_regions = app.panel_regions(&surface.output);
+    let container = widget::container(container).padding(panel_regions);
 
-container.into()
-
+    container.into()
 }
 
 fn close_button(on_press: Msg) -> cosmic::Element<'static, Msg> {

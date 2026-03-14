@@ -44,8 +44,12 @@ impl<Msg> Widget<Msg, cosmic::Theme, cosmic::Renderer> for LayoutWrapper<'_, Msg
         renderer: &cosmic::Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
+        #[cfg(debug_assertions)]
         dbg!(limits);
-        dbg!(self.content.as_widget().layout(tree, renderer, limits))
+        let node = self.content.as_widget().layout(tree, renderer, limits);
+        #[cfg(debug_assertions)]
+        dbg!(&node);
+        node
     }
 
     delegate::delegate! {
@@ -101,7 +105,7 @@ impl<Msg> Widget<Msg, cosmic::Theme, cosmic::Renderer> for LayoutWrapper<'_, Msg
                 tree: &'b mut Tree,
                 layout: Layout<'_>,
                 renderer: &cosmic::Renderer,
-                transation: Vector,
+                translation: Vector,
             ) -> Option<overlay::Element<'b, Msg, cosmic::Theme, cosmic::Renderer>>;
             fn set_id(&mut self, id: Id);
         }

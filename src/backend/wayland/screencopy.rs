@@ -12,10 +12,7 @@ use cosmic::{
         SubsurfaceBuffer, SubsurfaceBufferRelease,
     },
 };
-use std::{
-    array,
-    sync::{Arc, Weak},
-};
+use std::sync::{Arc, Weak};
 
 use super::{AppData, Buffer, Capture, CaptureImage, Event};
 
@@ -130,7 +127,13 @@ impl ScreencopyHandler for AppData {
 
         // Create new buffer if none, then start capturing
         if session.buffers.is_none() {
-            session.buffers = Some(array::from_fn(|_| self.create_buffer(formats)));
+            match self.create_buffer_pair(formats) {
+                Ok(pair) => session.buffers = Some(pair),
+                Err(e) => {
+                    log::error!("Failed to create screencopy buffers: {e}");
+                    return;
+                }
+            }
             session.attach_buffer_and_commit(&capture, conn, &self.qh);
         }
     }
@@ -237,8 +240,14 @@ impl ScreencopyHandler for AppData {
             let Some(session) = session.as_mut() else {
                 return;
             };
-            if let Some(formats) = &session.formats {
-                session.buffers = Some(array::from_fn(|_| self.create_buffer(&formats)));
+            if let Some(formats) = session.formats.as_ref() {
+                match self.create_buffer_pair(formats) {
+                    Ok(pair) => session.buffers = Some(pair),
+                    Err(e) => {
+                        log::error!("Failed to re-create screencopy buffers: {e}");
+                        return;
+                    }
+                }
             }
             session.attach_buffer_and_commit(&capture, conn, &self.qh);
         } else {

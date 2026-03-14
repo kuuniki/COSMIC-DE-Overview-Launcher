@@ -1,3 +1,4 @@
+use anyhow::Context as _;
 use cctk::{
     screencopy::{Formats, Rect},
     wayland_client::{
@@ -27,9 +28,14 @@ pub struct Buffer {
 }
 
 impl AppData {
-    fn create_shm_buffer(&self, format: wl_shm::Format, (width, height): (u32, u32)) -> Buffer {
-        let fd = utils::create_memfile().unwrap(); // XXX?
-        rustix::fs::ftruncate(&fd, width as u64 * height as u64 * 4).unwrap();
+    fn create_shm_buffer(
+        &self,
+        format: wl_shm::Format,
+        (width, height): (u32, u32),
+    ) -> anyhow::Result<Buffer> {
+        let fd = utils::create_memfile().context("Failed to create screencopy SHM memfile")?;
+        rustix::fs::ftruncate(&fd, width as u64 * height as u64 * 4)
+            .context("Failed to resize screencopy SHM buffer")?;
 
         let pool = self.shm_state.wl_shm().create_pool(
             fd.as_fd(),
@@ -51,7 +57,11 @@ impl AppData {
         pool.destroy();
 
         #[cfg(feature = "no-subsurfaces")]
-        let mmap = unsafe { memmap2::Mmap::map(&fd).unwrap() };
+        let mmap = unsafe {
+            // SAFETY: `fd` is a valid memfile allocated and sized above; no other
+            // mutable mapping exists for it at this point.
+            memmap2::Mmap::map(&fd).context("Failed to mmap screencopy buffer")?
+        };
 
         let full_damage = vec![Rect {
             x: 0,
@@ -60,7 +70,7 @@ impl AppData {
             height: height as i32,
         }];
 
-        Buffer {
+        Ok(Buffer {
             backing: Arc::new(
                 Shmbuf {
                     fd,
@@ -77,7 +87,7 @@ impl AppData {
             #[cfg(feature = "no-subsurfaces")]
             mmap,
             size: (width, height),
-        }
+        })
     }
 
     #[cfg(not(feature = "force-shm-screencopy"))]
@@ -115,7 +125,6 @@ impl AppData {
             return Ok(None);
         };
         let gbm_format = gbm::Format::try_from(format)?;
-        //dbg!(format, modifiers);
         let bo = if !modifiers.iter().all(|x| *x == gbm::Modifier::Invalid) {
             gbm.create_buffer_object_with_modifiers::<()>(
                 width,
@@ -189,7 +198,7 @@ impl AppData {
         }))
     }
 
-    pub fn create_buffer(&mut self, formats: &Formats) -> Buffer {
+    pub fn create_buffer(&mut self, formats: &Formats) -> anyhow::Result<Buffer> {
         // XXX Handle other formats?
         let format = wl_shm::Format::Abgr8888;
 
@@ -207,7 +216,7 @@ impl AppData {
                 formats.dmabuf_device.map(|dev| dev as u64),
             ) {
                 Ok(Some(buffer)) => {
-                    return buffer;
+                    return Ok(buffer);
                 }
                 Ok(None) => {}
                 Err(err) => log::error!("Failed to create gbm buffer: {}", err),
@@ -215,9 +224,21 @@ impl AppData {
         }
 
         // Fallback to shm buffer
-        // Assume format is already known to be valid
-        assert!(formats.shm_formats.contains(&format));
+        if !formats.shm_formats.contains(&format) {
+            anyhow::bail!(
+                "Compositor does not advertise required SHM format {:?}",
+                format
+            );
+        }
         self.create_shm_buffer(format, formats.buffer_size)
+    }
+
+    /// Allocates a swapchain pair of buffers for a screencopy session.
+    /// Returns an error without allocating the second buffer if the first fails.
+    pub fn create_buffer_pair(&mut self, formats: &Formats) -> anyhow::Result<[Buffer; 2]> {
+        let b0 = self.create_buffer(formats)?;
+        let b1 = self.create_buffer(formats)?;
+        Ok([b0, b1])
     }
 }
 

@@ -1,68 +1,105 @@
 [package]
 name = "cosmic-workspaces"
+
 version = "0.1.0"
+
 edition = "2024"
 
 [dependencies]
+
 anyhow = "1.0.99"
+
 calloop = { version = "0.14.3", features = ["executor"] }
+
 clap = { version = "4", features = ["derive"] }
+
 cosmic-bg-config = { git = "https://github.com/pop-os/cosmic-bg" }
+
 cosmic-comp-config = { git = "https://github.com/pop-os/cosmic-comp" }
+
 env_logger = "0.11.8"
+
 futures-channel = "0.3.31"
+
 gbm = "0.18.0"
+
 futures = "0.3"
+
 tracing = "0.1"
 pop-launcher = { git = "https://github.com/pop-os/launcher/" }
-pop-launcher-service = { git = "https://github.com/pop-os/launcher/" }
-libcosmic = { git = "https://github.com/pop-os/libcosmic", default-features = false, features = [
-    "tokio",
-    "wayland",
-    "single-instance",
-    "desktop",
-    "multi-window",
-    "winit",
-] }
-cosmic-config = { git = "https://github.com/pop-os/libcosmic" }
-freedesktop-icons = { package = "cosmic-freedesktop-icons", git = "https://github.com/pop-os/freedesktop-icons" }
 
+pop-launcher-service = { git = "https://github.com/pop-os/launcher/" }
+
+libcosmic = { git = "https://github.com/pop-os/libcosmic", default-features = false, features = [
+ "tokio",
+ "wayland",
+ "single-instance",
+ "desktop",
+ "multi-window",
+ "winit",
+] }
+
+cosmic-config = { git = "https://github.com/pop-os/libcosmic" }
+
+freedesktop-icons = { package = "cosmic-freedesktop-icons", git = "https://github.com/pop-os/freedesktop-icons" }
 memmap2 = "0.9.8"
+
 tokio = "1.47.1"
+
 wayland-protocols = "0.32.9"
+
 delegate = "0.13.4"
+
 itertools = "0.14.0"
+
 log = "0.4.28"
+
 i18n-embed-fl = "0.10"
+
 rust-embed = "8.7.2"
+
 rustix = { version = "1.1.2", features = ["fs", "shm"] }
+
 calloop-wayland-source = "0.4.1"
+
 aliasable = "0.1.3"
+
 futures-executor = { version = "0.3.31", features = ["thread-pool"] }
+
 zbus = "5.9.0"
+
 tokio-stream = { version = "0.1.17", features = ["sync"] }
+
 ash = { version = "0.38.0", features = ["loaded"] }
+
 bytemuck = "1.23.2"
 cosmic-panel-config = { git = "https://github.com/pop-os/cosmic-panel" }
 
 [dependencies.i18n-embed]
+
 version = "0.16"
+
 features = ["fluent-system", "desktop-requester"]
 
 [features]
+
 default = ["wgpu"]
+
 wgpu = ["libcosmic/wgpu"]
 # Debugging features
+
 force-shm-screencopy = []
+
 no-subsurfaces = ["force-shm-screencopy"]
+
 mock-backend = []
+
 console = []
+
 a11y = []
 
 [profile.dev]
-# Not usable at opt-level 0, at least with software renderer
-opt-level = 1
 
-[patch."https://github.com/pop-os/cosmic-protocols"]
-cosmic-protocols = { git = "https://github.com/pop-os/cosmic-protocols//", branch = "main" }
-cosmic-client-toolkit = { git = "https://github.com/pop-os/cosmic-protocols//", branch = "main" }
+# Not usable at opt-level 0, at least with software renderer
+
+opt-level = 1

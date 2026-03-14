@@ -130,7 +130,10 @@ pub enum DropTarget {
 impl DropTarget {
     /// Encode as a u64 for iced/smithay_sctk to associate drag destination area with widget.
     pub fn drag_id(&self) -> u64 {
-        // https://doc.rust-lang.org/std/mem/fn.discriminant.html#accessing-the-numeric-value-of-the-discriminant
+        // SAFETY: `DropTarget` is `#[repr(u8)]`, so its first byte is the numeric
+        // discriminant value. The pointer is derived from a valid reference so it
+        // is properly aligned and non-null, and reading a single `u8` from it is
+        // within bounds. See: https://doc.rust-lang.org/std/mem/fn.discriminant.html#accessing-the-numeric-value-of-the-discriminant
         let discriminant = unsafe { *<*const _>::from(self).cast::<u8>() };
         match self {
             Self::WorkspaceSidebarEntry(workspace, _output) => {
